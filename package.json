@@ -1,0 +1,26 @@
+{
+  "name": "warkop-warga",
+  "version": "1.0.0",
+  "description": "Warkop Warga is a responsive, local-storage-based Point of Sale (POS) and self-service ordering system built purely with Vanilla HTML, CSS, and JS. This application adopts a QR-code-based Self-Service ordering flow right from the customer's table, wrapped in a modern, aesthetic pastel design (Sage Green).",
+  "main": "admin.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jjiyyaaa/Warkop-Warga.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/jjiyyaaa/Warkop-Warga/issues"
+  },
+  "homepage": "https://github.com/jjiyyaaa/Warkop-Warga#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "mysql2": "^3.22.3"
+  }
+}

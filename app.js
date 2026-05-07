@@ -9,6 +9,11 @@ function formatRupiah(amount) {
   return new Intl.NumberFormat('id-ID').format(amount);
 }
 
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
 function init() {
   if (typeof lucide !== 'undefined') lucide.createIcons();
   
@@ -21,6 +26,7 @@ function init() {
   document.getElementById('checkout-table-number').innerText = `Meja ${tableNumber.toUpperCase()}`;
   
   cart = [];
+  currentOrder = null;
   updateCartUI();
   showScreen('menu');
   setFilter('all');
@@ -75,6 +81,11 @@ function updateQuantity(id, delta) {
   renderMenu();
 }
 
+function updateNote(id, note) {
+  const item = cart.find(c => c.id === id);
+  if (item) item.notes = note;
+}
+
 function removeCartItem(id) {
   cart = cart.filter(c => c.id !== id);
   updateCartUI();
@@ -86,13 +97,10 @@ function toggleCartDrawer() {
   const backdrop = document.getElementById('cart-backdrop');
   
   if (drawer.classList.contains('translate-x-full')) {
-    // Open
     drawer.classList.remove('translate-x-full');
     backdrop.classList.remove('hidden');
-    // slight delay for opacity transition
     setTimeout(() => backdrop.classList.remove('opacity-0'), 10);
   } else {
-    // Close
     drawer.classList.add('translate-x-full');
     backdrop.classList.add('opacity-0');
     setTimeout(() => backdrop.classList.add('hidden'), 300);
@@ -127,7 +135,7 @@ function updateCartUI() {
           <button onclick="removeCartItem(${item.id})" class="absolute top-4 right-4 text-red-500 hover:text-red-700 transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
           <p class="font-bold text-gray-800 pr-6">${item.name}</p>
           <p class="text-primary font-medium text-sm mb-3">Rp ${formatRupiah(item.price)}</p>
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between mb-3">
              <div class="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
                <button onclick="updateQuantity(${item.id}, -1)" class="w-8 h-8 flex items-center justify-center hover:bg-gray-200 transition text-gray-600"><i data-lucide="minus" class="w-3 h-3"></i></button>
                <span class="w-8 text-center font-bold text-sm leading-8 bg-white border-x border-gray-200">${item.quantity}</span>
@@ -135,6 +143,7 @@ function updateCartUI() {
              </div>
              <p class="font-bold text-gray-800">Rp ${formatRupiah(sum)}</p>
           </div>
+          <input type="text" placeholder="Catatan: es dipisah, dll (opsional)" class="w-full text-xs px-3 py-2 border border-gray-200 rounded bg-gray-50 outline-primary text-gray-600" value="${item.notes || ''}" onchange="updateNote(${item.id}, this.value)">
         </div>
       `;
     });
@@ -202,6 +211,7 @@ function goToCheckout() {
          <div>
             <p class="font-bold text-gray-800">${item.name}</p>
             <p class="text-xs text-gray-400 mt-0.5 tracking-wide">${item.quantity} x Rp ${formatRupiah(item.price)}</p>
+            ${item.notes ? `<p class="text-xs text-gray-500 italic mt-1 font-medium"><i data-lucide="info" class="w-3 h-3 inline"></i> Catatan: ${item.notes}</p>` : ''}
          </div>
          <p class="font-medium text-gray-800">Rp ${formatRupiah(sum)}</p>
       </div>
@@ -214,47 +224,131 @@ function goToCheckout() {
   showScreen('checkout');
 }
 
-function processCheckout() {
+async function processCheckout() {
   const paymentInput = document.querySelector('input[name="payment"]:checked');
   if (!paymentInput) return alert("Pilih metode pembayaran terlebih dahulu!");
   
   const method = paymentInput.value;
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
-  const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-  const orderId = String(orders.length + 1);
-  
-  currentOrder = {
-    id: orderId,
+  const payload = {
     tableNumber,
     items: cart,
     total,
-    status: 'unpaid',
-    createdAt: new Date().toISOString(),
     paymentMethod: method
   };
-  
-  orders.push(currentOrder);
-  localStorage.setItem('orders', JSON.stringify(orders));
-  
-  document.getElementById('waiting-total').innerText = `Rp ${formatRupiah(total)}`;
-  document.getElementById('waiting-order-id').innerText = orderId; // Show flat ID since UI shows "ORDER NO"
-  
-  showScreen('waiting');
-  pollOrderStatus();
+
+  try {
+    const response = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const orderData = await response.json();
+    currentOrder = orderData;
+    
+    document.getElementById('waiting-order-id').innerText = orderData.id;
+    
+    if (method === 'qris') {
+      document.getElementById('waiting-cash-view').classList.add('hidden');
+      document.getElementById('waiting-qris-view').classList.remove('hidden');
+      document.getElementById('waiting-title').innerText = "Selesaikan Pembayaran QRIS";
+      document.getElementById('waiting-total-qris').innerText = `Rp ${formatRupiah(total)}`;
+      
+      // Render dummy QRIS
+      new QRious({
+        element: document.getElementById('qr-qris-payment'),
+        value: `QRIS-PAYMENT-MOCK-${orderData.id}`,
+        size: 200,
+        level: 'H'
+      });
+    } else {
+      document.getElementById('waiting-qris-view').classList.add('hidden');
+      document.getElementById('waiting-cash-view').classList.remove('hidden');
+      document.getElementById('waiting-title').innerText = "Tunggu Konfirmasi Kasir";
+      document.getElementById('waiting-total-cash').innerText = `Rp ${formatRupiah(total)}`;
+    }
+    
+    showScreen('waiting');
+    pollOrderStatus();
+  } catch(e) {
+    console.error("Failed to checkout:", e);
+    alert("Terjadi kesalahan sistem.");
+  }
 }
 
 function pollOrderStatus() {
-  const interval = setInterval(() => {
-    const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-    const latest = orders.find(o => o.id === currentOrder.id);
-    
-    if (latest && latest.status !== 'unpaid') {
-      clearInterval(interval);
-      document.getElementById('success-order-id').innerText = currentOrder.id;
-      showScreen('countdown'); // using your success/no-countdown box
+  const interval = setInterval(async () => {
+    if (!currentOrder) {
+       clearInterval(interval);
+       return;
+    }
+    try {
+      const response = await fetch('/api/orders');
+      const orders = await response.json();
+      const latest = orders.find(o => o.id === currentOrder.id);
+      
+      if (latest && latest.status !== 'unpaid') {
+        clearInterval(interval);
+        currentOrder = latest; // sync
+        showSuccessReceipt();
+      }
+    } catch(e) {
+      console.error("Polling error", e);
     }
   }, 2000);
+}
+
+function showSuccessReceipt() {
+  // Update Success UI Elements
+  document.getElementById('receipt-order-id').innerText = currentOrder.id;
+  document.getElementById('receipt-date').innerText = formatDate(currentOrder.createdAt);
+  
+  const receiptItems = document.getElementById('receipt-items');
+  receiptItems.innerHTML = currentOrder.items.map(item => `
+    <div class="flex justify-between">
+      <div class="flex-1 pr-2">
+         <span class="block">${item.name}</span>
+         ${item.notes ? `<span class="block text-[10px] italic text-gray-500 border-l border-gray-300 pl-1 mt-0.5 ml-1">*Note: ${item.notes}</span>` : ''}
+         <span class="text-gray-400 mt-0.5 block">${item.quantity} x ${formatRupiah(item.price)}</span>
+      </div>
+      <div class="font-bold whitespace-nowrap">
+         ${formatRupiah(item.price * item.quantity)}
+      </div>
+    </div>
+  `).join('');
+  
+  document.getElementById('receipt-total').innerText = `Rp ${formatRupiah(currentOrder.total)}`;
+  document.getElementById('receipt-method').innerText = currentOrder.paymentMethod === 'cash' ? 'Tunai' : 'QRIS';
+  
+  // Reset print button
+  const printBtn = document.getElementById('btn-request-print');
+  printBtn.disabled = false;
+  printBtn.innerHTML = `<i data-lucide="printer" class="w-4 h-4"></i> Minta Nota Fisik ke Meja`;
+  printBtn.classList.replace('bg-green-600', 'bg-gray-800');
+  
+  showScreen('countdown');
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+async function requestPhysicalReceipt() {
+  if (!currentOrder) return;
+  try {
+    const btn = document.getElementById('btn-request-print');
+    btn.disabled = true;
+    btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Memproses...`;
+    
+    await fetch(`/api/orders/${currentOrder.id}/print`, { method: 'POST' });
+    
+    btn.classList.replace('bg-gray-800', 'bg-green-600');
+    btn.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4"></i> Kasir Sedang Mencetak`;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+  } catch(e) {
+    console.error("Print request failed", e);
+    alert("Gagal meminta struk fisik. Coba lagi.");
+    document.getElementById('btn-request-print').disabled = false;
+  }
 }
 
 window.addEventListener('DOMContentLoaded', init);
