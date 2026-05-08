@@ -13,14 +13,14 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '.')));
 
 // Database connection pool
-// Railway provides MYSQL_* env vars automatically when you add a MySQL plugin.
+// Railway provides MYSQL* env vars automatically from the MySQL plugin.
 // Falls back to XAMPP defaults for local development.
 const pool = mysql.createPool({
-  host:     process.env.MYSQL_HOST     || 'localhost',
-  port:     process.env.MYSQL_PORT     || 3306,
-  user:     process.env.MYSQL_USER     || 'root',
-  password: process.env.MYSQL_PASSWORD || '',
-  database: process.env.MYSQL_DATABASE || 'warkop_warga',
+  host:     process.env.MYSQLHOST     || 'localhost',
+  port:     process.env.MYSQLPORT     || 3306,
+  user:     process.env.MYSQLUSER     || 'root',
+  password: process.env.MYSQLPASSWORD || '',
+  database: process.env.MYSQLDATABASE || 'warkop_warga',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
