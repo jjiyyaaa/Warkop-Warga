@@ -56,4 +56,4 @@ This project has evolved into a **Full-Stack Application**, utilizing Node.js fo
    - **Admin View:** Open a new tab and go to `http://localhost:3000/admin.html`
 
 ## 📝 Developer Notes
-*The `node_modules/` folder is intentionally ignored from this repository to save space. Always run `npm install` before starting the server on a new machine.*
+*This application currently runs on an offline LocalStorage setup for presentation and lightweight prototyping purposes. For real-world implementation across multiple distinct customer devices, you must integrate the `localStorage` functions located inside the JavaScript files (`app.js` & `admin.js`) into a real cloud Backend/Database (such as Firebase, Supabase, or a custom REST API).*

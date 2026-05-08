@@ -259,7 +259,7 @@ async function processCheckout() {
       new QRious({
         element: document.getElementById('qr-qris-payment'),
         value: `QRIS-PAYMENT-MOCK-${orderData.id}`,
-        size: 200,
+        size: 220,
         level: 'H'
       });
     } else {
@@ -275,6 +275,15 @@ async function processCheckout() {
     console.error("Failed to checkout:", e);
     alert("Terjadi kesalahan sistem.");
   }
+}
+
+function downloadQRIS() {
+  const canvas = document.getElementById('qr-qris-payment');
+  if (!canvas) return;
+  const link = document.createElement('a');
+  link.download = `QRIS-Warkop-Warga-${currentOrder?.id || 'order'}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
 }
 
 function pollOrderStatus() {

@@ -159,7 +159,12 @@
         <div id="waiting-qris-view" class="hidden">
            <h2 class="text-2xl text-primary font-black mb-2" id="waiting-total-qris">Rp 0</h2>
            <p class="text-gray-500 text-sm font-medium px-4 mb-4">Scan QRIS di bawah ini menggunakan M-Banking atau e-Wallet Anda.</p>
-           <div class="bg-white p-3 inline-block rounded-lg shadow-sm border mb-2"><canvas id="qr-qris-payment"></canvas></div>
+           <div class="bg-white p-3 inline-block rounded-lg shadow-sm border mb-3"><canvas id="qr-qris-payment"></canvas></div>
+           <div class="mb-2">
+             <button onclick="downloadQRIS()" class="flex items-center gap-2 mx-auto px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold rounded-full shadow transition">
+               <i data-lucide="download" class="w-3.5 h-3.5"></i> Simpan QR ke Galeri
+             </button>
+           </div>
         </div>
         
         <div class="py-4 bg-gray-50 rounded-xl border border-gray-200">
